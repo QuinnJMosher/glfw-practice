@@ -11,6 +11,12 @@ float* getOrtho(float left, float right, float bottom, float top, float a_fNear,
 GLuint CreateShader(GLenum a_eShaderType, const char *a_strShaderFile);
 GLuint CreateProgram(const char *a_vertex, const char *a_frag);
 
+struct Vertex
+{
+	float fPositions[4];
+	float fColours[4];
+};
+
 int main() {
 	//start glfw
 	if (!glfwInit()) {
@@ -33,20 +39,43 @@ int main() {
 		return -1;
 	}
 
-	//setup draw values
-	const float vertexPositions[] =
+	//create some vertices
+	Vertex* myShape = new Vertex[3];
+	myShape[0].fPositions[0] = 1024 / 2.0;
+	myShape[0].fPositions[1] = 720 / 2.0 + 100.0f;
+	myShape[1].fPositions[0] = 1024 / 2.0 - 50.0f;
+	myShape[1].fPositions[1] = 720 / 2.0 - 100.0f;
+	myShape[2].fPositions[0] = 1024 / 2.0 + 50.0f;
+	myShape[2].fPositions[1] = 720 / 2.0 - 100.0f;
+	for (int i = 0; i < 3; i++)
 	{
-		1024 / 2.0, 720 / 2.0 + 10.0f, 0.0f, 1.0f,
-		1024 / 2.0 - 5.0f, 720 / 2.0 - 10.0f, 0.0f, 1.0f,
-		1024 / 2.0 + 5.0f, 720 / 2.0 - 10.0f, 0.0f, 1.0f,
-	};
+		myShape[i].fPositions[2] = 0.0f;
+		myShape[i].fPositions[3] = 1.0f;
+		myShape[i].fColours[0] = 0.0f;
+		myShape[i].fColours[1] = 0.0f;
+		myShape[i].fColours[2] = 1.0f;
+		myShape[i].fColours[3] = 1.0f;
+	}
 
-	const float vertexColours[] =
+	//create ID for a vertex buffer object
+	GLuint uiVBO;
+	glGenBuffers(1, &uiVBO);
+
+	//check it succeeded
+	if (uiVBO != 0)
 	{
-		1.0f, 0.0f, 0.0f, 1.0f,
-		0.0f, 1.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f, 1.0f,
-	};
+		//bind VBO
+		glBindBuffer(GL_ARRAY_BUFFER, uiVBO);
+		//allocate space for vertices on the graphics card
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex)* 3, NULL, GL_STATIC_DRAW);
+		//get pointer to allocated space on the graphics card
+		GLvoid* vBuffer = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+		//copy data to graphics card
+		memcpy(vBuffer, myShape, sizeof(Vertex)* 3);
+		//unmap and unbind buffer
+		glUnmapBuffer(GL_ARRAY_BUFFER);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
 
 	//create shader program
 	GLuint uiProgramFlat = CreateProgram("VertexShader.glsl", "FlatFragmentShader.glsl");
@@ -54,7 +83,6 @@ int main() {
 	//find the position of the matrix variable in the shader so we can send info there later
 	GLuint MatrixIDFlat = glGetUniformLocation(uiProgramFlat, "MVP");
 
-	//set up the mapping of the screen to pixel co-ordinates. Try changing these values to see what happens.
 	float *orthographicProjection = getOrtho(0, 1024, 0, 720, 0, 100);
 
 	//main loop
@@ -64,27 +92,24 @@ int main() {
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		//update goes here
+		glUniformMatrix4fv(MatrixIDFlat, 1, GL_FALSE, orthographicProjection);
 		//enable shaders
 		glUseProgram(uiProgramFlat);
 
-		//send our orthographic projection info to the shader
-		glUniformMatrix4fv(MatrixIDFlat, 1, GL_FALSE, orthographicProjection);
+		glBindBuffer(GL_ARRAY_BUFFER, uiVBO);
 
-		//enable the vertex array state, since we're sending in an array of vertices
+		//enable the vertex array states
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
-
-		//specify where our vertex array is, how many components each vertex has, 
-		//the data type of each component and whether the data is normalised or not
-		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, vertexPositions);
-		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, vertexColours);
+		
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(sizeof(float)* 4));
 
 		//draw to the screen
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 
-		//update goes here
-
-		//draw goes here
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		glfwSwapBuffers(window);
 
