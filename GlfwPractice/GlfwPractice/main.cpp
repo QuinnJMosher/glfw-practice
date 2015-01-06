@@ -1,4 +1,6 @@
-#include <GLFW/glfw3.h>
+#include "GL/glew.h"
+#include "GL/wglew.h"
+#include "GLFW/glfw3.h"
 
 int main() {
 	if (!glfwInit()) {
@@ -13,6 +15,11 @@ int main() {
 	}
 
 	glfwMakeContextCurrent(window);
+
+	if (glewInit != GLEW_OK) {
+		glfwTerminate();
+		return -1;
+	}
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwSwapBuffers(window);
