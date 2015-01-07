@@ -53,9 +53,12 @@ int main() {
 		myShape[i].fPositions[3] = 1.0f;
 		myShape[i].fColours[0] = 0.0f;
 		myShape[i].fColours[1] = 0.0f;
-		myShape[i].fColours[2] = 1.0f;
-		myShape[i].fColours[3] = 1.0f;
+		myShape[i].fColours[2] = 0.0f;
+		myShape[i].fColours[3] = 0.0f;
 	}
+	myShape[0].fColours[0] = 1.0f;
+	myShape[1].fColours[1] = 1.0f;
+	myShape[2].fColours[2] = 1.0f;
 
 	//create ID for a vertex buffer object
 	GLuint uiVBO;
@@ -77,6 +80,30 @@ int main() {
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
+	//create ID for a index buffer object
+	GLuint uiIBO;
+	glGenBuffers(1, &uiIBO);
+
+	//check it succeeded
+	if (uiIBO != 0)
+	{
+		//bind IBO
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, uiIBO);
+		//allocate space for index info on the graphics card
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(char), NULL, GL_STATIC_DRAW);
+		//get pointer to newly allocated space on the graphics card
+		GLvoid* iBuffer = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+		//specify the order we'd like to draw our vertices.
+		//In this case they are in sequential order
+		for (int i = 0; i < 3; i++)
+		{
+			((char*)iBuffer)[i] = i;
+		}
+		//unmap and unbind
+		glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	}
+
 	//create shader program
 	GLuint uiProgramFlat = CreateProgram("VertexShader.glsl", "FlatFragmentShader.glsl");
 
@@ -87,10 +114,42 @@ int main() {
 
 	//main loop
 	while (!glfwWindowShouldClose(window)) {
-
 		//clear screen
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		//update
+		//bind VBO
+		glBindBuffer(GL_ARRAY_BUFFER, uiVBO);
+		//allocate space for vertices on the graphics card
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex)* 3, NULL, GL_STATIC_DRAW);
+		//get pointer to allocated space on the graphics card
+		GLvoid* vBuffer = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+
+		//edit data
+		if (myShape[0].fColours[0] < 1) {
+			myShape[0].fColours[0] += 0.0001f;
+		} else {
+			myShape[0].fColours[0] = 0;
+		}
+		if (myShape[1].fColours[1] < 1) {
+			myShape[1].fColours[1] += 0.0001f;
+		}
+		else {
+			myShape[1].fColours[1] = 0;
+		}
+		if (myShape[2].fColours[2] < 1) {
+			myShape[2].fColours[2] += 0.0001f;
+		}
+		else {
+			myShape[2].fColours[2] = 0;
+		}
+
+		//copy data to graphics card
+		memcpy(vBuffer, myShape, sizeof(Vertex)* 3);
+		//unmap and unbind buffer
+		glUnmapBuffer(GL_ARRAY_BUFFER);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		//update goes here
 		glUniformMatrix4fv(MatrixIDFlat, 1, GL_FALSE, orthographicProjection);
@@ -98,6 +157,7 @@ int main() {
 		glUseProgram(uiProgramFlat);
 
 		glBindBuffer(GL_ARRAY_BUFFER, uiVBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, uiIBO);
 
 		//enable the vertex array states
 		glEnableVertexAttribArray(0);
@@ -107,14 +167,17 @@ int main() {
 		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(sizeof(float)* 4));
 
 		//draw to the screen
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_BYTE, NULL);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 		glfwSwapBuffers(window);
 
 		glfwPollEvents();
 	}
+
+	glDeleteBuffers(1, &uiIBO);
 
 	glfwTerminate();
 	return 0;
