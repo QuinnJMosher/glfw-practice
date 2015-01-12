@@ -18,21 +18,10 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RenderTools.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="FlatFragmentShader.glsl" />
     <None Include="TexturedFragmentShader.glsl" />
     <None Include="VertexShader.glsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="VideoGlobals.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderTools.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

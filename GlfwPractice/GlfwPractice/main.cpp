@@ -4,14 +4,18 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include "VideoGlobals.h"
-#include "RenderTools.h"
 
 
 //prototypes
 float* getOrtho(float left, float right, float bottom, float top, float a_fNear, float a_fFar);
 GLuint CreateShader(GLenum a_eShaderType, const char *a_strShaderFile);
 GLuint CreateProgram(const char *a_vertex, const char *a_frag);
+
+struct Vertex
+{
+	float fPositions[4];
+	float fColours[4];
+};
 
 int main() {
 	//start glfw
@@ -20,13 +24,14 @@ int main() {
 	}
 
 	//make window
-	window::window = glfwCreateWindow(window::Width, window::Height, "hello", NULL, NULL);
-	if (!window::window) {
+	GLFWwindow* window;
+	window = glfwCreateWindow(640, 480, "hello", NULL, NULL);
+	if (!window) {
 		glfwTerminate();
 		return -1;
 	}
 
-	glfwMakeContextCurrent(window::window);
+	glfwMakeContextCurrent(window);
 
 	//start glew
 	if (glewInit() != GLEW_OK) {
@@ -34,25 +39,145 @@ int main() {
 		return -1;
 	}
 
+	//create some vertices
+	Vertex* myShape = new Vertex[3];
+	myShape[0].fPositions[0] = 1024 / 2.0;
+	myShape[0].fPositions[1] = 720 / 2.0 + 100.0f;
+	myShape[1].fPositions[0] = 1024 / 2.0 - 50.0f;
+	myShape[1].fPositions[1] = 720 / 2.0 - 100.0f;
+	myShape[2].fPositions[0] = 1024 / 2.0 + 50.0f;
+	myShape[2].fPositions[1] = 720 / 2.0 - 100.0f;
+	for (int i = 0; i < 3; i++)
+	{
+		myShape[i].fPositions[2] = 0.0f;
+		myShape[i].fPositions[3] = 1.0f;
+		myShape[i].fColours[0] = 0.0f;
+		myShape[i].fColours[1] = 0.0f;
+		myShape[i].fColours[2] = 0.0f;
+		myShape[i].fColours[3] = 0.0f;
+	}
+	myShape[0].fColours[0] = 1.0f;
+	myShape[1].fColours[1] = 1.0f;
+	myShape[2].fColours[2] = 1.0f;
+
+	//create ID for a vertex buffer object
+	GLuint uiVBO;
+	glGenBuffers(1, &uiVBO);
+
+	//check it succeeded
+	if (uiVBO != 0)
+	{
+		//bind VBO
+		glBindBuffer(GL_ARRAY_BUFFER, uiVBO);
+		//allocate space for vertices on the graphics card
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex)* 3, NULL, GL_STATIC_DRAW);
+		//get pointer to allocated space on the graphics card
+		GLvoid* vBuffer = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+		//copy data to graphics card
+		memcpy(vBuffer, myShape, sizeof(Vertex)* 3);
+		//unmap and unbind buffer
+		glUnmapBuffer(GL_ARRAY_BUFFER);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+
+	//create ID for a index buffer object
+	GLuint uiIBO;
+	glGenBuffers(1, &uiIBO);
+
+	//check it succeeded
+	if (uiIBO != 0)
+	{
+		//bind IBO
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, uiIBO);
+		//allocate space for index info on the graphics card
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(char), NULL, GL_STATIC_DRAW);
+		//get pointer to newly allocated space on the graphics card
+		GLvoid* iBuffer = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+		//specify the order we'd like to draw our vertices.
+		//In this case they are in sequential order
+		for (int i = 0; i < 3; i++)
+		{
+			((char*)iBuffer)[i] = i;
+		}
+		//unmap and unbind
+		glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	}
+
 	//create shader program
-	rendering::ProgramFlat = CreateProgram("VertexShader.glsl", "FlatFragmentShader.glsl");
+	GLuint uiProgramFlat = CreateProgram("VertexShader.glsl", "FlatFragmentShader.glsl");
 
 	//find the position of the matrix variable in the shader so we can send info there later
-	rendering::MatrixIDFlat = glGetUniformLocation(rendering::ProgramFlat, "MVP");
+	GLuint MatrixIDFlat = glGetUniformLocation(uiProgramFlat, "MVP");
 
-	//make ortho projection
-	rendering::orthographicProjection = getOrtho(0, window::Width, 0, window::Height, 0, 100);
+	float *orthographicProjection = getOrtho(0, 1024, 0, 720, 0, 100);
 
 	//main loop
-	while (!rtools::NextFrame(window::window)) {
+	while (!glfwWindowShouldClose(window)) {
 		//clear screen
-		rtools::ClearScreen();
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		//update
+		//bind VBO
+		glBindBuffer(GL_ARRAY_BUFFER, uiVBO);
+		//allocate space for vertices on the graphics card
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex)* 3, NULL, GL_STATIC_DRAW);
+		//get pointer to allocated space on the graphics card
+		GLvoid* vBuffer = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+
+		//edit data
+		if (myShape[0].fColours[0] < 1) {
+			myShape[0].fColours[0] += 0.0001f;
+		} else {
+			myShape[0].fColours[0] = 0;
+		}
+		if (myShape[1].fColours[1] < 1) {
+			myShape[1].fColours[1] += 0.0001f;
+		}
+		else {
+			myShape[1].fColours[1] = 0;
+		}
+		if (myShape[2].fColours[2] < 1) {
+			myShape[2].fColours[2] += 0.0001f;
+		}
+		else {
+			myShape[2].fColours[2] = 0;
+		}
+
+		//copy data to graphics card
+		memcpy(vBuffer, myShape, sizeof(Vertex)* 3);
+		//unmap and unbind buffer
+		glUnmapBuffer(GL_ARRAY_BUFFER);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		//update goes here
+		glUniformMatrix4fv(MatrixIDFlat, 1, GL_FALSE, orthographicProjection);
+		//enable shaders
+		glUseProgram(uiProgramFlat);
 
-		rtools::RenderTriangle(window::Width / 2, window::Height / 2, 20, 20);
+		glBindBuffer(GL_ARRAY_BUFFER, uiVBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, uiIBO);
 
+		//enable the vertex array states
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(sizeof(float)* 4));
+
+		//draw to the screen
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_BYTE, NULL);
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+		glfwSwapBuffers(window);
+
+		glfwPollEvents();
 	}
+
+	glDeleteBuffers(1, &uiIBO);
 
 	glfwTerminate();
 	return 0;
